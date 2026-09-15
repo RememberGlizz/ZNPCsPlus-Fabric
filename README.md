@@ -1,52 +1,29 @@
-# ZNPCsPlus [![](https://img.shields.io/discord/1099449144948555957?label=Discord&logo=Discord&style=plastic)](https://discord.gg/MAZz6XpPcg) [![](https://img.shields.io/jenkins/build?jobUrl=https%3A%2F%2Fci.pyr.lol%2Fjob%2FZNPCsPlus%2F&style=plastic&logo=jenkins)](https://ci.pyr.lol/job/ZNPCsPlus/)
-[![](https://img.shields.io/bstats/players/18244?style=plastic&label=bStats%20Players)]((https://bstats.org/plugin/bukkit/ZNPCsPlus/18244/)) [![](https://img.shields.io/bstats/servers/18244?style=plastic&label=bStats%20Servers)]((https://bstats.org/plugin/bukkit/ZNPCsPlus/18244/)) [![](https://img.shields.io/spiget/downloads/109380?style=plastic&label=Spigot%20Downloads)]((https://www.spigotmc.org/resources/znpcsplus.109380/))
+# ZNPCsPlus Fabric 1.21.1
 
-[![](https://raw.githubusercontent.com/Pyrbu/ZNPCsPlus/refs/heads/2.X/.github/sculkhosting.png?raw=true)](https://my.sculkhosting.com/ref/znpcsplus)
-https://my.sculkhosting.com/ref/znpcsplus
+Fabric 1.21.1 server-side port work based on [ZNPCsPlus](https://github.com/Pyrbu/ZNPCsPlus), preserving the packet-backed NPC architecture rather than spawning ordinary server entities.
 
-[ZNPCsPlus](https://www.spigotmc.org/resources/znpcsplus.109380/) is a Spigot plugin that is used to create fake entities 
-that players can interact with to perform actions like switching servers on a network or executing commands.
+## Build
 
-This plugin is a remake of a plugin called ZNPCs, we originally started because the maintainer of ZNPCs decided to announce that he was 
-[dropping support for the plugin](https://github.com/Pyrbu/ZNPCsPlus/blob/2.X/.github/znpc.png?raw=true).
+Requires **Java 21**. On Windows:
 
-Looking for up-to-date builds of the plugin? Check out our [Jenkins](https://ci.pyr.lol/job/ZNPCsPlus/)
+```bat
+gradlew.bat clean build
+```
 
-## Why is it so good?
-- 100% Packet Based - Nothing is ran on the main thread
-- Performance & stability oriented code
-- Support for all versions from 1.8 to 26.2
-- Support for multiple different storage options
-- Intuitive command system
+On Linux/macOS:
 
-### Requirements, Extensions & Supported Software
-Requirements:
-- Java 8+
-- Minecraft 1.8 - 26.2
+```bash
+./gradlew clean build
+```
 
-Supported Softwares:
-- Spigot ([Website](https://www.spigotmc.org/))
-- Paper ([Github](https://github.com/PaperMC/Paper)) ([Website](https://papermc.io/software/paper))
-- Folia ([Github](https://github.com/PaperMC/Folia)) ([Website](https://papermc.io/software/folia))
-- ArcLight ([Github](https://github.com/IzzelAliz/Arclight))
+After a successful Loom build, the remapped mod JAR is under `build/libs/`.
 
-Optional Dependencies/Extensions:
-- PlaceholderAPI
+## Runtime dependency
 
-## Found a bug?
-Open an issue in the GitHub [issue tracker](https://github.com/Pyrbu/ZNPCsPlus/issues) or join our [support discord](https://discord.gg/MAZz6XpPcg)
+The server also needs the compatible **PacketEvents Fabric** mod installed.
 
-## BStats
-[![](https://bstats.org/signatures/bukkit/znpcsplus.svg)](https://bstats.org/plugin/bukkit/ZNPCsPlus/18244/)
+## Status
 
-#### Like what you see? Want the project to continue improving? Consider starring the repository & leaving a positive review on [Spigot](https://www.spigotmc.org/resources/znpcsplus.109380/)!
+This branch contains the current Fabric port source and Gradle wrapper. It is still being compile/runtime validated and should not yet be treated as a production-ready full-parity release until the GitHub Actions build and server testing pass.
 
-## Credits
-- [PacketEvents 2.0](https://github.com/retrooper/packetevents) - Packet library
-- [Minecraft Wiki Protocol (formally wiki.vg)](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Main_Page) - Minecraft protocol documentation
-- [gson](https://github.com/google/gson) - JSON parsing library made by Google
-- [Mineskin.org](https://mineskin.org/) - Website for raw skin file uploads
-- [adventure](https://docs.advntr.dev/) - Minecraft text api
-- [DazzleConf](https://github.com/A248/DazzleConf) - Configuration library
-- [Director](https://github.com/Pyrbu/Director) - Command library
-- [PlaceholderAPI](https://github.com/PlaceholderAPI/PlaceholderAPI) - Universal string placeholder library
+See `UPSTREAM-NOTICE.md` and `LICENSE` for upstream attribution and GPL-3.0 licensing.

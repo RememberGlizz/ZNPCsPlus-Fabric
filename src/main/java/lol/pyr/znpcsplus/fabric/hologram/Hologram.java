@@ -1,0 +1,3 @@
+package lol.pyr.znpcsplus.fabric.hologram;
+import java.util.*;
+public final class Hologram{public double offset=0;public long refreshDelay=-1,lastRefresh=System.currentTimeMillis();public final List<HologramLine> lines=new ArrayList<>(); public List<HologramLine> lines(){return Collections.unmodifiableList(lines);}public boolean shouldRefresh(){return refreshDelay!=-1&&System.currentTimeMillis()-lastRefresh>refreshDelay;}public void markRefreshed(){lastRefresh=System.currentTimeMillis();}}

@@ -1,3 +1,8 @@
-rootProject.name = "ZNPCsPlus"
-
-include "api", "plugin"
+pluginManagement {
+    repositories {
+        maven { url = 'https://maven.fabricmc.net/' }
+        gradlePluginPortal()
+        mavenCentral()
+    }
+}
+rootProject.name = 'ZNPCsPlus-Fabric-1.21.1'

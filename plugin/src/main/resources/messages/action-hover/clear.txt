@@ -1,3 +1,0 @@
-<gray>Usage <gold>» <yellow>/npc action clear <gold><id>
-
-<gray>Command used to clear all npc actions

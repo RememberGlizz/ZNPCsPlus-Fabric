@@ -1,9 +1,0 @@
-
-<gold>ZNPCsPlus <yellow>v${version} <red><click:run_command:/npc><hover:show_text:'<red>Click to view the main help message'>[BACK]</hover></click></red>
-<gray>Hover over any command for more info
-
- <hover:show_text:'{@storage-hover/save}'><gold>* <yellow>/npc storage save</hover>
- <hover:show_text:'{@storage-hover/reload}'><gold>* <yellow>/npc storage reload</hover>
- <hover:show_text:'{@storage-hover/import}'><gold>* <yellow>/npc storage import <importer></hover>
- <hover:show_text:'{@storage-hover/migrate}'><gold>* <yellow>/npc storage migrate <from> <to> [force]</hover>
-

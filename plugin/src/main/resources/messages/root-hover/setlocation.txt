@@ -1,3 +1,0 @@
-<gray>Usage <gold>» <yellow>/npc setlocation <gold><id> <x> <y> <z>
-
-<gray>Command used to manually adjust an npc''s location

@@ -1,4 +1,0 @@
-<gray>Usage <gold>» <yellow>/npc storage reload
-
-<gray>Command used to re-load all npcs from storage
-<red>Warning: This command will delete all unsaved changes to npcs

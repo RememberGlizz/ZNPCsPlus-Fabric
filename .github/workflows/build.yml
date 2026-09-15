@@ -1,0 +1,35 @@
+name: Build Fabric 1.21.1
+
+on:
+  push:
+    branches: [ fabric-1.21.1 ]
+  pull_request:
+    branches: [ fabric-1.21.1 ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+      - name: Build
+        run: ./gradlew clean build --stacktrace
+      - name: Upload JARs
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZNPCsPlus-Fabric-1.21.1
+          path: build/libs/*.jar
+          if-no-files-found: error

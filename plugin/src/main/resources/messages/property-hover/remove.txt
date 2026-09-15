@@ -1,3 +1,0 @@
-<gray>Usage <gold>» <yellow>/npc property remove <gold><id> <property>
-
-<gray>Command used to unset properties on npcs

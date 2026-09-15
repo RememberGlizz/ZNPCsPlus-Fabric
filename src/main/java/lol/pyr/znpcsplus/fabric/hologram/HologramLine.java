@@ -1,0 +1,2 @@
+package lol.pyr.znpcsplus.fabric.hologram;
+public final class HologramLine{public enum Kind{TEXT,ITEM} public Kind kind=Kind.TEXT; public String value=""; public HologramLine(){} public HologramLine(Kind k,String v){kind=k;value=v;} public static HologramLine text(String v){return new HologramLine(Kind.TEXT,v);} public static HologramLine item(String v){return new HologramLine(Kind.ITEM,v);}}

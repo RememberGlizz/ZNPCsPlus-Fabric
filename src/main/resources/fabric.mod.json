@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "znpcsplus_fabric",
+  "version": "${version}",
+  "name": "ZNPCsPlus Fabric",
+  "description": "A Fabric 1.21.1 port of ZNPCsPlus, preserving packet NPCs, holograms, actions, skins, properties and persistence.",
+  "authors": ["Pyrbu (original ZNPCsPlus)", "Fabric port"],
+  "contact": {
+    "sources": "https://github.com/Pyrbu/ZNPCsPlus"
+  },
+  "license": "GPL-3.0-only",
+  "environment": "server",
+  "entrypoints": {
+    "main": ["lol.pyr.znpcsplus.fabric.ZNpcsPlusFabric"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "1.21.1",
+    "java": ">=21",
+    "fabric-api": "*",
+    "packetevents": ">=2.12.0"
+  }
+}

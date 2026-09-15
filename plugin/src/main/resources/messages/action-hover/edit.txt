@@ -1,3 +1,0 @@
-<gray>Usage <gold>» <yellow>/npc action edit <gold><id> <action id> <type> <args>
-
-<gray>Command used to change a specific action on an npc

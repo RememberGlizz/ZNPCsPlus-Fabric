@@ -1,3 +1,0 @@
-<gray>Usage <gold>» <yellow>/npc teleport <gold><id>
-
-<gray>Command used to teleport yourself to an npc
