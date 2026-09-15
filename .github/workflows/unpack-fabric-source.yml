@@ -1,0 +1,83 @@
+name: Unpack Fabric source
+
+on:
+  push:
+    branches:
+      - fabric-1.21.1
+
+permissions:
+  contents: write
+
+jobs:
+  unpack:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Unpack source into repository root
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="ZNPCsPlus-Fabric-1.21.1-SOURCE-WITH-GRADLE.zip"
+          test -f "$ARCHIVE"
+          TMP="$(mktemp -d)"
+          unzip -q "$ARCHIVE" -d "$TMP"
+          SOURCE="$TMP/ZNPCsPlus-Fabric-1.21.1"
+          test -d "$SOURCE"
+
+          find . -mindepth 1 -maxdepth 1 \
+            ! -name '.git' \
+            ! -name '.github' \
+            -exec rm -rf {} +
+
+          cp -a "$SOURCE"/. ./
+          rm -f "$ARCHIVE"
+
+          cat > .gitignore <<'EOF'
+          .gradle/
+          build/
+          out/
+          run/
+          .idea/
+          *.iml
+          EOF
+
+          cat > README.md <<'EOF'
+          # ZNPCsPlus Fabric 1.21.1 Port
+
+          Fabric 1.21.1 server-side port work based on ZNPCsPlus.
+
+          ## Build
+
+          Requires Java 21. On Windows:
+
+          ```bat
+          gradlew.bat clean build
+          ```
+
+          The remapped mod JAR will be written under `build/libs/` after a successful Loom build.
+
+          ## Status
+
+          This branch contains the current Fabric port source. It has not yet been verified as a production-ready full-parity release; compile/runtime issues discovered by CI or testing still need to be fixed.
+
+          See `UPSTREAM-NOTICE.md` and `LICENSE` for upstream attribution and licensing.
+          EOF
+
+      - name: Commit unpacked source
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Add Fabric 1.21.1 port source"
+          git push origin HEAD:fabric-1.21.1
