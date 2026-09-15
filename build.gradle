@@ -15,6 +15,7 @@ repositories {
     maven { url = 'https://maven.fabricmc.net/' }
     maven { url = 'https://repo.codemc.io/repository/maven-releases/' }
     maven { url = 'https://repo.codemc.io/repository/maven-snapshots/' }
+    maven { url = 'https://api.modrinth.com/maven' }
 }
 
 dependencies {
@@ -23,9 +24,11 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    // ZNPCsPlus itself is packet-based. The Fabric port deliberately keeps that model.
-    // Install the PacketEvents Fabric mod on the server alongside this mod.
-    modCompileOnly "com.github.retrooper:packetevents-fabric:${project.packetevents_version}"
+    // ZNPCsPlus itself is packet-based. PacketEvents' CodeMC prebuilt coordinates
+    // only publish the traditional server platforms, so use the actual Fabric
+    // release JAR from Modrinth for the compile classpath.
+    // PacketEvents 2.12.2+fabric (Modrinth version id: 8s2UbrFH)
+    modCompileOnly "maven.modrinth:HYKaKraK:8s2UbrFH"
 
     // Storage/import support. Loom includes these as nested runtime libraries.
     include implementation('org.yaml:snakeyaml:2.3')
