@@ -30,12 +30,12 @@ dependencies {
     // Compile against the PacketEvents API that matches the embedded runtime.
     compileOnly "com.github.retrooper:packetevents-api:${project.packetevents_version}"
 
-    // PacketEvents remains embedded for wrapper encoding/decoding, but its stock Fabric
-    // mixins are removed from the final jar below. ZNPCsPlus attaches PacketEvents only
-    // after LOGIN has completed, so Velocity/Fabric forwarding traffic is never decoded
-    // by PacketEvents.
-    modRuntimeOnly "maven.modrinth:HYKaKraK:A46QemnN"
-    include "maven.modrinth:HYKaKraK:A46QemnN"
+    // PacketEvents 2.9.1 is the last runtime we already confirmed can initialize on the
+    // target Minecraft 1.21.1 server without the newer comp_4024() binary mismatch.
+    // Its stock Fabric mixins are stripped below; ZNPCsPlus performs post-LOGIN,
+    // compression-aware injection itself, so the old LOGIN/channel bugs are bypassed.
+    modRuntimeOnly "maven.modrinth:HYKaKraK:VzVthUJi"
+    include "maven.modrinth:HYKaKraK:VzVthUJi"
 
     // Storage/import support. Loom includes these as nested runtime libraries.
     include implementation('org.yaml:snakeyaml:2.3')
@@ -71,10 +71,8 @@ jar {
 
 // PacketEvents' normal Fabric ConnectionMixin injects during LOGIN. On Velocity-backed
 // Fabric servers that can cause the forwarding/login payload to be decoded as a vanilla
-// packet (for example "Packet ID 400" in LOGIN). The port does not need PacketEvents in
-// LOGIN at all, so patch the embedded PacketEvents jar after remapping and disable its two
-// automatic server mixins. PacketEventsLateInjector attaches the same handlers during
-// CONFIGURATION/PLAY instead.
+// packet. The port does not need PacketEvents in LOGIN at all, so patch the embedded
+// PacketEvents jar after remapping and disable its automatic Fabric mixins.
 tasks.register('patchEmbeddedPacketEvents') {
     dependsOn tasks.named('remapJar')
 
