@@ -27,10 +27,11 @@ dependencies {
     // Compile against the PacketEvents API that matches the embedded runtime.
     compileOnly "com.github.retrooper:packetevents-api:${project.packetevents_version}"
 
-    // PacketEvents 2.8.0 Fabric is explicitly compatible with Minecraft 1.21.1-1.21.5.
-    // Keep it embedded so server owners only install one physical ZNPCsPlus jar.
-    modRuntimeOnly "maven.modrinth:HYKaKraK:IWAvbnWE"
-    include "maven.modrinth:HYKaKraK:IWAvbnWE"
+    // PacketEvents 2.9.1 fixes the Fabric channel/pipeline injection bug present in 2.8.0
+    // and supports Minecraft 1.21 through 1.21.7. Keep it embedded so server owners
+    // only install one physical ZNPCsPlus jar.
+    modRuntimeOnly "maven.modrinth:HYKaKraK:VzVthUJi"
+    include "maven.modrinth:HYKaKraK:VzVthUJi"
 
     // Storage/import support. Loom includes these as nested runtime libraries.
     include implementation('org.yaml:snakeyaml:2.3')
