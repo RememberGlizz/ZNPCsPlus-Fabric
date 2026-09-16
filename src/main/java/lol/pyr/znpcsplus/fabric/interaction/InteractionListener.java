@@ -9,7 +9,7 @@ import lol.pyr.znpcsplus.fabric.npc.*;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 
-public final class InteractionListener implements PacketListener {
+public final class InteractionListener extends PacketListenerAbstract {
     private final MinecraftServer server;private final NpcRegistry registry;private final ActionExecutor actions;private final ConfigManager config;
     public InteractionListener(MinecraftServer server,NpcRegistry registry,ActionExecutor actions,ConfigManager config){this.server=server;this.registry=registry;this.actions=actions;this.config=config;}
     @Override public void onPacketReceive(PacketReceiveEvent event){
