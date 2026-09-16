@@ -1,3 +1,6 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
 plugins {
     id 'fabric-loom' version '1.9.2'
     id 'maven-publish'
@@ -27,9 +30,10 @@ dependencies {
     // Compile against the PacketEvents API that matches the embedded runtime.
     compileOnly "com.github.retrooper:packetevents-api:${project.packetevents_version}"
 
-    // PacketEvents 2.11.1 keeps the Fabric 1.21.1-safe injection/version code and
-    // fixes login plugin request/response decoding used by proxy forwarding.
-    // Keep it embedded so server owners only install one physical ZNPCsPlus jar.
+    // PacketEvents remains embedded for wrapper encoding/decoding, but its stock Fabric
+    // mixins are removed from the final jar below. ZNPCsPlus attaches PacketEvents only
+    // after LOGIN has completed, so Velocity/Fabric forwarding traffic is never decoded
+    // by PacketEvents.
     modRuntimeOnly "maven.modrinth:HYKaKraK:A46QemnN"
     include "maven.modrinth:HYKaKraK:A46QemnN"
 
@@ -63,6 +67,69 @@ java {
 jar {
     from('LICENSE')
     from('UPSTREAM-NOTICE.md')
+}
+
+// PacketEvents' normal Fabric ConnectionMixin injects during LOGIN. On Velocity-backed
+// Fabric servers that can cause the forwarding/login payload to be decoded as a vanilla
+// packet (for example "Packet ID 400" in LOGIN). The port does not need PacketEvents in
+// LOGIN at all, so patch the embedded PacketEvents jar after remapping and disable its two
+// automatic server mixins. PacketEventsLateInjector attaches the same handlers during
+// CONFIGURATION/PLAY instead.
+tasks.register('patchEmbeddedPacketEvents') {
+    dependsOn tasks.named('remapJar')
+
+    doLast {
+        File outputJar = tasks.named('remapJar').get().archiveFile.get().asFile
+        File workDir = layout.buildDirectory.dir('packetevents-patch/outer').get().asFile
+        File peWorkDir = layout.buildDirectory.dir('packetevents-patch/inner').get().asFile
+
+        delete workDir
+        delete peWorkDir
+        workDir.mkdirs()
+        peWorkDir.mkdirs()
+
+        copy {
+            from zipTree(outputJar)
+            into workDir
+        }
+
+        File nestedDir = new File(workDir, 'META-INF/jars')
+        File packetEventsJar = nestedDir.listFiles()?.find {
+            it.isFile() && it.name.startsWith('HYKaKraK-') && it.name.endsWith('.jar')
+        }
+        if (packetEventsJar == null) {
+            throw new GradleException('Embedded PacketEvents jar was not found in META-INF/jars')
+        }
+
+        copy {
+            from zipTree(packetEventsJar)
+            into peWorkDir
+        }
+
+        File mixinConfig = new File(peWorkDir, 'packetevents.mixins.json')
+        if (!mixinConfig.isFile()) {
+            throw new GradleException('packetevents.mixins.json was not found in embedded PacketEvents jar')
+        }
+
+        def json = new JsonSlurper().parse(mixinConfig)
+        json.mixins = []
+        json.client = []
+        mixinConfig.text = JsonOutput.prettyPrint(JsonOutput.toJson(json)) + '\n'
+
+        packetEventsJar.delete()
+        ant.zip(destfile: packetEventsJar.absolutePath) {
+            fileset(dir: peWorkDir.absolutePath)
+        }
+
+        outputJar.delete()
+        ant.zip(destfile: outputJar.absolutePath) {
+            fileset(dir: workDir.absolutePath)
+        }
+    }
+}
+
+tasks.named('build') {
+    dependsOn tasks.named('patchEmbeddedPacketEvents')
 }
 
 publishing {

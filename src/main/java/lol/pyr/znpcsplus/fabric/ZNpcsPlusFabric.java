@@ -6,6 +6,7 @@ import lol.pyr.znpcsplus.fabric.config.ConfigManager;
 import lol.pyr.znpcsplus.fabric.interaction.*;
 import lol.pyr.znpcsplus.fabric.npc.*;
 import lol.pyr.znpcsplus.fabric.packet.PacketEngine;
+import lol.pyr.znpcsplus.fabric.packet.PacketEventsLateInjector;
 import lol.pyr.znpcsplus.fabric.scheduler.TickScheduler;
 import lol.pyr.znpcsplus.fabric.skin.SkinCache;
 import lol.pyr.znpcsplus.fabric.storage.StorageManager;
@@ -23,6 +24,11 @@ public final class ZNpcsPlusFabric implements ModInitializer {
     private static volatile Runtime runtime;
 
     @Override public void onInitialize(){
+        // PacketEvents is embedded for its mature 1.21.1 packet wrappers, but its stock
+        // Fabric mixins are disabled in the final jar. Attach it only after LOGIN so it
+        // never touches Velocity forwarding/login packets.
+        PacketEventsLateInjector.register(LOGGER);
+
         config=new ConfigManager(LOGGER);config.load();registry=new NpcRegistry();types=new NpcTypeRegistry();skins=new SkinCache(LOGGER,config);scheduler=new TickScheduler();
 
         ServerLifecycleEvents.SERVER_STARTING.register(this::start);
