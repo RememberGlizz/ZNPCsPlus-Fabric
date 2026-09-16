@@ -24,15 +24,13 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
-    // PacketEvents' Fabric distribution contains the API as nested modules.
-    // Loom strips nested jars from modImplementation on the development classpath,
-    // so compile directly against the published API module.
+    // Compile against the PacketEvents API that matches the embedded runtime.
     compileOnly "com.github.retrooper:packetevents-api:${project.packetevents_version}"
 
-    // Use the real Fabric runtime in development and nest that full Fabric mod
-    // inside the final ZNPCsPlus jar. Server owners still install one physical jar.
-    modRuntimeOnly "maven.modrinth:HYKaKraK:8s2UbrFH"
-    include "maven.modrinth:HYKaKraK:8s2UbrFH"
+    // PacketEvents 2.8.0 Fabric is explicitly compatible with Minecraft 1.21.1-1.21.5.
+    // Keep it embedded so server owners only install one physical ZNPCsPlus jar.
+    modRuntimeOnly "maven.modrinth:HYKaKraK:IWAvbnWE"
+    include "maven.modrinth:HYKaKraK:IWAvbnWE"
 
     // Storage/import support. Loom includes these as nested runtime libraries.
     include implementation('org.yaml:snakeyaml:2.3')
