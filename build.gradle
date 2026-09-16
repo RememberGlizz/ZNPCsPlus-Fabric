@@ -30,12 +30,11 @@ dependencies {
     // Compile against the PacketEvents API that matches the embedded runtime.
     compileOnly "com.github.retrooper:packetevents-api:${project.packetevents_version}"
 
-    // PacketEvents 2.9.1 is the last runtime we already confirmed can initialize on the
-    // target Minecraft 1.21.1 server without the newer comp_4024() binary mismatch.
-    // Its stock Fabric mixins are stripped below; ZNPCsPlus performs post-LOGIN,
-    // compression-aware injection itself, so the old LOGIN/channel bugs are bypassed.
-    modRuntimeOnly "maven.modrinth:HYKaKraK:VzVthUJi"
-    include "maven.modrinth:HYKaKraK:VzVthUJi"
+    // PacketEvents stays embedded so server owners only install one physical JAR.
+    // Its stock Fabric mixins are disabled below and ZNPCsPlus attaches it only after
+    // Velocity LOGIN, at compression-aware CONFIGURATION/PLAY pipeline positions.
+    modRuntimeOnly "maven.modrinth:HYKaKraK:A46QemnN"
+    include "maven.modrinth:HYKaKraK:A46QemnN"
 
     // Storage/import support. Loom includes these as nested runtime libraries.
     include implementation('org.yaml:snakeyaml:2.3')
@@ -69,10 +68,93 @@ jar {
     from('UPSTREAM-NOTICE.md')
 }
 
-// PacketEvents' normal Fabric ConnectionMixin injects during LOGIN. On Velocity-backed
-// Fabric servers that can cause the forwarding/login payload to be decoded as a vanilla
-// packet. The port does not need PacketEvents in LOGIN at all, so patch the embedded
-// PacketEvents jar after remapping and disable its automatic Fabric mixins.
+// Rewrites one UTF-8 constant in a Java class file without changing any other bytecode.
+// PacketEvents 2.11.1's Fabric artifact was compiled against a later 1.21.x intermediary
+// name for WorldVersion#getId(): comp_4024(). Minecraft 1.21.1 uses method_48018().
+def patchClassUtf8Constant = { File classFile, String oldValue, String newValue ->
+    if (!classFile.isFile()) {
+        throw new GradleException("Class file to patch was not found: ${classFile}")
+    }
+
+    def input = new DataInputStream(new ByteArrayInputStream(classFile.bytes))
+    def bytes = new ByteArrayOutputStream()
+    def output = new DataOutputStream(bytes)
+
+    int magic = input.readInt()
+    if (magic != 0xCAFEBABE as int) {
+        throw new GradleException("Not a Java class file: ${classFile}")
+    }
+    output.writeInt(magic)
+    output.writeShort(input.readUnsignedShort()) // minor
+    output.writeShort(input.readUnsignedShort()) // major
+
+    int constantPoolCount = input.readUnsignedShort()
+    output.writeShort(constantPoolCount)
+    int replacements = 0
+
+    for (int i = 1; i < constantPoolCount; i++) {
+        int tag = input.readUnsignedByte()
+        output.writeByte(tag)
+        switch (tag) {
+            case 1: // CONSTANT_Utf8
+                int length = input.readUnsignedShort()
+                byte[] utf = new byte[length]
+                input.readFully(utf)
+                String value = new String(utf, java.nio.charset.StandardCharsets.UTF_8)
+                byte[] rewritten = value == oldValue
+                        ? newValue.getBytes(java.nio.charset.StandardCharsets.UTF_8)
+                        : utf
+                if (value == oldValue) replacements++
+                output.writeShort(rewritten.length)
+                output.write(rewritten)
+                break
+            case 3: // Integer
+            case 4: // Float
+                output.writeInt(input.readInt())
+                break
+            case 5: // Long
+            case 6: // Double
+                output.writeLong(input.readLong())
+                i++ // long/double consume two constant-pool slots
+                break
+            case 7:  // Class
+            case 8:  // String
+            case 16: // MethodType
+            case 19: // Module
+            case 20: // Package
+                output.writeShort(input.readUnsignedShort())
+                break
+            case 9:  // Fieldref
+            case 10: // Methodref
+            case 11: // InterfaceMethodref
+            case 12: // NameAndType
+            case 17: // Dynamic
+            case 18: // InvokeDynamic
+                output.writeShort(input.readUnsignedShort())
+                output.writeShort(input.readUnsignedShort())
+                break
+            case 15: // MethodHandle
+                output.writeByte(input.readUnsignedByte())
+                output.writeShort(input.readUnsignedShort())
+                break
+            default:
+                throw new GradleException("Unsupported constant-pool tag ${tag} while patching ${classFile}")
+        }
+    }
+
+    output.write(input.readAllBytes())
+    output.close()
+    input.close()
+
+    if (replacements != 1) {
+        throw new GradleException("Expected exactly one ${oldValue} reference in ${classFile}, found ${replacements}")
+    }
+    classFile.bytes = bytes.toByteArray()
+}
+
+// Patch the nested PacketEvents JAR after Loom remaps our mod:
+// 1) disable PacketEvents' automatic LOGIN-time Fabric mixins;
+// 2) repair its one Minecraft 1.21.1 binary-incompatible method reference.
 tasks.register('patchEmbeddedPacketEvents') {
     dependsOn tasks.named('remapJar')
 
@@ -108,11 +190,14 @@ tasks.register('patchEmbeddedPacketEvents') {
         if (!mixinConfig.isFile()) {
             throw new GradleException('packetevents.mixins.json was not found in embedded PacketEvents jar')
         }
-
         def json = new JsonSlurper().parse(mixinConfig)
         json.mixins = []
         json.client = []
         mixinConfig.text = JsonOutput.prettyPrint(JsonOutput.toJson(json)) + '\n'
+
+        File serverManager = new File(peWorkDir,
+                'io/github/retrooper/packetevents/factory/fabric/FabricServerManager.class')
+        patchClassUtf8Constant(serverManager, 'comp_4024', 'method_48018')
 
         packetEventsJar.delete()
         ant.zip(destfile: packetEventsJar.absolutePath) {
