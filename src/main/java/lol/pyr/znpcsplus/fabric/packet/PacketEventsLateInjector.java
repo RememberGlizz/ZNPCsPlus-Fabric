@@ -35,8 +35,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * PacketEvents' stock Fabric mixin hooks ClientConnection.addHandlers and therefore sees
  * Velocity/Fabric login forwarding packets. On this network that stream is not safe for
  * PacketEvents to decode and results in impossible LOGIN packet IDs (for example 400).
- * The final jar disables those stock mixins and this class attaches the same handlers at
+ * The final jar disables those stock mixins and this class attaches the handlers at
  * Fabric's CONFIGURATION/PLAY lifecycle instead.
+ *
+ * The outbound PacketEvents handler is deliberately placed AFTER Minecraft's vanilla
+ * packet encoder in pipeline order. Netty walks outbound handlers in reverse order, so
+ * ordinary vanilla Packet objects reach PacketEvents first, are passed through untouched,
+ * and are then encoded by Minecraft. PacketEvents therefore never sees/re-writes ordinary
+ * CobbleClub/vanilla outbound ByteBufs such as text_display metadata. ZNPCsPlus' own
+ * already-encoded PacketEvents ByteBufs still hit PacketEvents first and then pass through
+ * the vanilla encoder (which ignores ByteBuf messages) into compression/framing.
  */
 public final class PacketEventsLateInjector {
     private static final AtomicBoolean REGISTERED = new AtomicBoolean();
@@ -57,8 +65,6 @@ public final class PacketEventsLateInjector {
             }
         });
 
-        // Fallback and player association. INIT is explicitly fired after the connection
-        // has entered PLAY, so no LOGIN packet can ever reach our PacketEvents handlers.
         ServerPlayConnectionEvents.INIT.register((handler, server) -> {
             try {
                 ensurePlay(handler, logger);
@@ -99,8 +105,6 @@ public final class PacketEventsLateInjector {
         if (user == null || channel.pipeline().get(PacketEvents.DECODER_NAME) == null || channel.pipeline().get(PacketEvents.ENCODER_NAME) == null) {
             user = inject(channel, profile, ConnectionState.PLAY, handler.player, logger);
         } else {
-            // CONFIGURATION normally transitions the user itself. Force the known real
-            // state here as a safety net because Fabric has now entered PLAY.
             user.setConnectionState(ConnectionState.PLAY);
             PacketEvents.getAPI().getProtocolManager().setChannel(profile.getId(), channel);
             PacketEvents.getAPI().getInjector().setPlayer(channel, handler.player);
@@ -124,30 +128,36 @@ public final class PacketEventsLateInjector {
         ChannelHandler decoder = newPacketHandler(DECODER_CLASS, side, user);
         ChannelHandler encoder = newPacketHandler(ENCODER_CLASS, side, user);
 
-        if (pipeline.get("splitter") == null || pipeline.get("prepender") == null) {
-            throw new IllegalStateException("Vanilla packet splitter/prepender are not present in the Netty pipeline");
+        if (pipeline.get("splitter") == null || pipeline.get("encoder") == null) {
+            throw new IllegalStateException("Vanilla packet splitter/encoder are not present in the Netty pipeline");
         }
 
-        /*
-         * Compression is normally enabled during LOGIN. Because we deliberately inject
-         * after LOGIN, the pipeline can already contain:
-         *
-         *   splitter -> decompress -> decoder
-         *   prepender -> compress -> encoder
-         *
-         * PacketEvents must see a complete, DECOMPRESSED packet body inbound and an
-         * encoded but UNCOMPRESSED packet body outbound. Its normal early injection ends
-         * up in exactly these positions after vanilla later adds compression. Reproduce
-         * that final ordering here instead of blindly inserting after splitter/prepender.
-         */
+        // Inbound PacketEvents still needs decompressed packet bodies for NPC interaction
+        // detection. This handler only observes client -> server traffic.
         String inboundAnchor = pipeline.get("decompress") != null ? "decompress" : "splitter";
-        String outboundAnchor = pipeline.get("compress") != null ? "compress" : "prepender";
-
         pipeline.addAfter(inboundAnchor, PacketEvents.DECODER_NAME, decoder);
+
+        /*
+         * Keep PacketEvents OUT of ordinary server -> client packet bytes.
+         *
+         * Pipeline order (simplified):
+         *   prepender -> compress -> encoder -> packetevents_encoder -> packet_handler
+         *
+         * Outbound traversal runs right-to-left. A normal Minecraft Packet therefore hits
+         * packetevents_encoder while it is still an object; PacketEncoder passes non-ByteBuf
+         * messages straight through. Minecraft's encoder then produces the ByteBuf after
+         * PacketEvents has already been passed, so the original vanilla/CobbleClub bytes are
+         * never decoded or rewritten by PacketEvents.
+         *
+         * ZNPCsPlus wrapper packets are already ByteBufs when written to the channel, so they
+         * are still processed by PacketEvents here and then continue through vanilla's encoder
+         * (which passes ByteBufs through) to compression and framing.
+         */
+        String outboundAnchor = "encoder";
         pipeline.addAfter(outboundAnchor, PacketEvents.ENCODER_NAME, encoder);
 
         // setUser must happen before setChannel: FabricChannelInjector.updateUser checks
-        // whether the channel has already been mapped and otherwise expects handlers.
+        // whether the channel has already been mapped and otherwise expects both handlers.
         PacketEvents.getAPI().getProtocolManager().setUser(channel, user);
         PacketEvents.getAPI().getProtocolManager().setChannel(profile.getId(), channel);
         if (player != null) PacketEvents.getAPI().getInjector().setPlayer(channel, player);
@@ -171,8 +181,8 @@ public final class PacketEventsLateInjector {
             });
         }
 
-        logger.debug("Attached PacketEvents after LOGIN in {} state for {} (inbound after {}, outbound after {}, pipeline={})",
-                state, profile.getName(), inboundAnchor, outboundAnchor, pipeline.names());
+        logger.debug("Attached PacketEvents after LOGIN in {} state for {} (inbound after {}, outbound after vanilla encoder, pipeline={})",
+                state, profile.getName(), inboundAnchor, pipeline.names());
         return user;
     }
 
