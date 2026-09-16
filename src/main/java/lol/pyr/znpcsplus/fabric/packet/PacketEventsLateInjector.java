@@ -26,7 +26,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -129,8 +128,23 @@ public final class PacketEventsLateInjector {
             throw new IllegalStateException("Vanilla packet splitter/prepender are not present in the Netty pipeline");
         }
 
-        pipeline.addAfter("splitter", PacketEvents.DECODER_NAME, decoder);
-        pipeline.addAfter("prepender", PacketEvents.ENCODER_NAME, encoder);
+        /*
+         * Compression is normally enabled during LOGIN. Because we deliberately inject
+         * after LOGIN, the pipeline can already contain:
+         *
+         *   splitter -> decompress -> decoder
+         *   prepender -> compress -> encoder
+         *
+         * PacketEvents must see a complete, DECOMPRESSED packet body inbound and an
+         * encoded but UNCOMPRESSED packet body outbound. Its normal early injection ends
+         * up in exactly these positions after vanilla later adds compression. Reproduce
+         * that final ordering here instead of blindly inserting after splitter/prepender.
+         */
+        String inboundAnchor = pipeline.get("decompress") != null ? "decompress" : "splitter";
+        String outboundAnchor = pipeline.get("compress") != null ? "compress" : "prepender";
+
+        pipeline.addAfter(inboundAnchor, PacketEvents.DECODER_NAME, decoder);
+        pipeline.addAfter(outboundAnchor, PacketEvents.ENCODER_NAME, encoder);
 
         // setUser must happen before setChannel: FabricChannelInjector.updateUser checks
         // whether the channel has already been mapped and otherwise expects handlers.
@@ -157,7 +171,8 @@ public final class PacketEventsLateInjector {
             });
         }
 
-        logger.debug("Attached PacketEvents after LOGIN in {} state for {}", state, profile.getName());
+        logger.debug("Attached PacketEvents after LOGIN in {} state for {} (inbound after {}, outbound after {}, pipeline={})",
+                state, profile.getName(), inboundAnchor, outboundAnchor, pipeline.names());
         return user;
     }
 
