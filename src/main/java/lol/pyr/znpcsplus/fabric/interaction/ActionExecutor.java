@@ -5,6 +5,7 @@ import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerPl
 import lol.pyr.znpcsplus.fabric.scheduler.TickScheduler;
 import lol.pyr.znpcsplus.fabric.util.TextUtil;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.MutableText;
@@ -13,8 +14,8 @@ import net.minecraft.util.Formatting;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
+import java.util.Locale;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,12 +47,38 @@ public final class ActionExecutor {
         try{
             switch(a.kind){
                 case CONSOLE -> server.getCommandManager().executeWithPrefix(server.getCommandSource(),stripSlash(value));
-                case PLAYER_COMMAND -> server.getCommandManager().executeWithPrefix(p.getCommandSource(),stripSlash(value));
+                case PLAYER_COMMAND -> executePlayerCommand(p,value);
                 case MESSAGE -> p.sendMessage(clickableMessage(value,p),false);
                 case PLAYER_CHAT -> server.getCommandManager().executeWithPrefix(p.getCommandSource(),"say "+value);
                 case SWITCH_SERVER -> switchServer(p,value);
             }
         }catch(Throwable t){org.slf4j.LoggerFactory.getLogger("ZNPCsPlus-Fabric").error("NPC action failed: "+a.kind,t);}
+    }
+
+    /**
+     * Compatibility for NPCs saved by the first Fabric builds.
+     *
+     * Old NPC setups commonly stored /tellraw as a PLAYER_COMMAND action. A normal
+     * player command source does not have permission to run tellraw, so clicking the
+     * NPC produced a command error for non-op players. Keep every other player command
+     * permission-aware, but execute tellraw with the same player as @s at elevated
+     * command permission and suppress command feedback.
+     */
+    private void executePlayerCommand(ServerPlayerEntity player,String value){
+        String command=stripSlash(value).trim();
+        if(isTellraw(command)){
+            ServerCommandSource source=player.getCommandSource().withLevel(4).withSilent();
+            server.getCommandManager().executeWithPrefix(source,command);
+            return;
+        }
+        server.getCommandManager().executeWithPrefix(player.getCommandSource(),command);
+    }
+
+    private static boolean isTellraw(String command){
+        if(command.isEmpty())return false;
+        String lower=command.toLowerCase(Locale.ROOT);
+        return lower.equals("tellraw")||lower.startsWith("tellraw ")||
+                lower.equals("minecraft:tellraw")||lower.startsWith("minecraft:tellraw ");
     }
 
     /**
