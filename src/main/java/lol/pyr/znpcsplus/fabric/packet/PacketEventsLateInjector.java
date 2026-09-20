@@ -128,8 +128,8 @@ public final class PacketEventsLateInjector {
         ChannelHandler decoder = newPacketHandler(DECODER_CLASS, side, user);
         ChannelHandler encoder = newPacketHandler(ENCODER_CLASS, side, user);
 
-        if (pipeline.get("splitter") == null || pipeline.get("encoder") == null) {
-            throw new IllegalStateException("Vanilla packet splitter/encoder are not present in the Netty pipeline");
+        if (pipeline.get("splitter") == null || pipeline.get("prepender") == null) {
+            throw new IllegalStateException("Vanilla packet splitter/prepender are not present in the Netty pipeline");
         }
 
         // Inbound PacketEvents still needs decompressed packet bodies for NPC interaction
@@ -137,23 +137,10 @@ public final class PacketEventsLateInjector {
         String inboundAnchor = pipeline.get("decompress") != null ? "decompress" : "splitter";
         pipeline.addAfter(inboundAnchor, PacketEvents.DECODER_NAME, decoder);
 
-        /*
-         * Keep PacketEvents OUT of ordinary server -> client packet bytes.
-         *
-         * Pipeline order (simplified):
-         *   prepender -> compress -> encoder -> packetevents_encoder -> packet_handler
-         *
-         * Outbound traversal runs right-to-left. A normal Minecraft Packet therefore hits
-         * packetevents_encoder while it is still an object; PacketEncoder passes non-ByteBuf
-         * messages straight through. Minecraft's encoder then produces the ByteBuf after
-         * PacketEvents has already been passed, so the original vanilla/CobbleClub bytes are
-         * never decoded or rewritten by PacketEvents.
-         *
-         * ZNPCsPlus wrapper packets are already ByteBufs when written to the channel, so they
-         * are still processed by PacketEvents here and then continue through vanilla's encoder
-         * (which passes ByteBufs through) to compression and framing.
-         */
-        String outboundAnchor = "encoder";
+        // Outbound PacketEvents needs to run after compression is installed when present,
+        // otherwise immediately after the vanilla prepender. This is the placement used by
+        // the verified fabric.7/fabric.10 runtime baseline.
+        String outboundAnchor = pipeline.get("compress") != null ? "compress" : "prepender";
         pipeline.addAfter(outboundAnchor, PacketEvents.ENCODER_NAME, encoder);
 
         // setUser must happen before setChannel: FabricChannelInjector.updateUser checks
@@ -181,8 +168,8 @@ public final class PacketEventsLateInjector {
             });
         }
 
-        logger.debug("Attached PacketEvents after LOGIN in {} state for {} (inbound after {}, outbound after vanilla encoder, pipeline={})",
-                state, profile.getName(), inboundAnchor, pipeline.names());
+        logger.debug("Attached PacketEvents after LOGIN in {} state for {} (inbound after {}, outbound after {}, pipeline={})",
+                state, profile.getName(), inboundAnchor, outboundAnchor, pipeline.names());
         return user;
     }
 
