@@ -2,7 +2,7 @@ name: Build Fabric 1.21.1
 
 on:
   push:
-    branches: [ fabric-1.21.1 ]
+    branches: [ fabric-1.21.1, fabric-1.21.1-2.0.0-fabric.10-stable ]
   pull_request:
     branches: [ fabric-1.21.1 ]
   workflow_dispatch:
