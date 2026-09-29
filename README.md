@@ -1,6 +1,7 @@
 # ZNPCsPlus Fabric Port [![](https://img.shields.io/discord/1099449144948555957?label=Discord&logo=Discord&style=plastic)](https://discord.gg/MAZz6XpPcg)
 
 # **GO TO BRANCHES TO FIND A Fabric Version!**
+<img width="512" height="512" alt="ZNPCs Plus Fabric Port" src="https://github.com/user-attachments/assets/a14e7ae4-20b4-4f95-8277-3b30ee176a84" />
 
 
 [ZNPCsPlus](https://www.spigotmc.org/resources/znpcsplus.109380/) is a Spigot plugin that is used to create fake entities 
